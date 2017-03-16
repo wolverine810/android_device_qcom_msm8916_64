@@ -14,8 +14,6 @@ BOARD_USES_GENERIC_AUDIO := true
 USE_CAMERA_STUB := true
 TARGET_DISABLE_DASH := true
 
--include $(QCPATH)/common/msm8916/BoardConfigVendor.mk
-
 # bring-up overrides
 BOARD_USES_GENERIC_AUDIO := true
 USE_CAMERA_STUB := true
@@ -146,7 +144,7 @@ TARGET_USES_CSVT := true
 
 BOARD_KERNEL_CMDLINE := console=ttyHSL0,115200,n8 androidboot.console=ttyHSL0 androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 androidboot.bootdevice=7824900.sdhci lpm_levels.sleep_disabled=1 earlyprintk
 
-BOARD_SECCOMP_POLICY := device/qcom/$(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX)/seccomp
+BOARD_SECCOMP_POLICY := device/tcl/q39/seccomp
 
 BOARD_KERNEL_BASE        := 0x80000000
 BOARD_KERNEL_PAGESIZE    := 2048
@@ -202,6 +200,7 @@ TARGET_PER_MGR_ENABLED := true
 
 # wifi
 BOARD_HAS_QCOM_WLAN := true
+BOARD_HAS_CFG80211_KERNEL3_10 := true
 CONFIG_EAP_PROXY := qmi
 CONFIG_EAP_PROXY_DUAL_SIM := true
 CONFIG_EAP_PROXY_AKA_PRIME := true

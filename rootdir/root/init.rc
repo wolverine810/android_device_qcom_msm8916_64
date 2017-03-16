@@ -9,6 +9,9 @@ import /init.usb.rc
 import /init.${ro.hardware}.rc
 import /init.${ro.zygote}.rc
 import /init.trace.rc
+# Include CM's extra init file
+import /init.cm.rc
+
 
 on early-init
     # Set init and its forked children's oom_adj.
@@ -59,6 +62,7 @@ on init
     write /sys/fs/cgroup/memory/sw/memory.move_charge_at_immigrate 1
     chown root system /sys/fs/cgroup/memory/sw/tasks
     chmod 0660 /sys/fs/cgroup/memory/sw/tasks
+    chmod 0220 /sys/fs/cgroup/memory/cgroup.event_control
 
     mkdir /system
     mkdir /data 0771 system system
@@ -119,25 +123,18 @@ on init
     mount cgroup none /dev/cpuctl cpu
     chown system system /dev/cpuctl
     chown system system /dev/cpuctl/tasks
-    chmod 0660 /dev/cpuctl/tasks
+    chmod 0666 /dev/cpuctl/tasks
     write /dev/cpuctl/cpu.shares 1024
-    write /dev/cpuctl/cpu.rt_runtime_us 950000
+    write /dev/cpuctl/cpu.rt_runtime_us 800000
     write /dev/cpuctl/cpu.rt_period_us 1000000
 
-    mkdir /dev/cpuctl/apps
-    chown system system /dev/cpuctl/apps/tasks
-    chmod 0666 /dev/cpuctl/apps/tasks
-    write /dev/cpuctl/apps/cpu.shares 1024
-    write /dev/cpuctl/apps/cpu.rt_runtime_us 800000
-    write /dev/cpuctl/apps/cpu.rt_period_us 1000000
-
-    mkdir /dev/cpuctl/apps/bg_non_interactive
-    chown system system /dev/cpuctl/apps/bg_non_interactive/tasks
-    chmod 0666 /dev/cpuctl/apps/bg_non_interactive/tasks
+    mkdir /dev/cpuctl/bg_non_interactive
+    chown system system /dev/cpuctl/bg_non_interactive/tasks
+    chmod 0666 /dev/cpuctl/bg_non_interactive/tasks
     # 5.0 %
-    write /dev/cpuctl/apps/bg_non_interactive/cpu.shares 52
-    write /dev/cpuctl/apps/bg_non_interactive/cpu.rt_runtime_us 700000
-    write /dev/cpuctl/apps/bg_non_interactive/cpu.rt_period_us 1000000
+    write /dev/cpuctl/bg_non_interactive/cpu.shares 52
+    write /dev/cpuctl/bg_non_interactive/cpu.rt_runtime_us 700000
+    write /dev/cpuctl/bg_non_interactive/cpu.rt_period_us 1000000
 
     # qtaguid will limit access to specific data based on group memberships.
     #   net_bw_acct grants impersonation of socket owners.
@@ -257,6 +254,7 @@ on post-fs-data
     # create basic filesystem structure
     mkdir /data/misc 01771 system misc
     mkdir /data/misc/adb 02750 system shell
+    mkdir /data/misc/audit 02750 audit system
     mkdir /data/misc/bluedroid 0770 bluetooth net_bt_stack
     mkdir /data/misc/bluetooth 0770 system system
     mkdir /data/misc/keystore 0700 keystore keystore
@@ -288,6 +286,7 @@ on post-fs-data
     mkdir /data/app-lib 0771 system system
     mkdir /data/app 0771 system system
     mkdir /data/property 0700 root root
+    mkdir /data/tombstones 0771 system system
 
     # create dalvik-cache, so as to enforce our permissions
     mkdir /data/dalvik-cache 0771 root root
@@ -309,6 +308,8 @@ on post-fs-data
     # the following directory.
     mkdir /data/mediadrm 0770 mediadrm mediadrm
 
+    mkdir /data/adb 0700 root root
+
     # symlink to bugreport storage location
     symlink /data/data/com.android.shell/files/bugreports /data/bugreports
 
@@ -320,6 +321,9 @@ on post-fs-data
 
     # Set SELinux security contexts on upgrade or policy update.
     restorecon_recursive /data
+    restorecon /data/data
+    restorecon /data/user
+    restorecon /data/user/0
 
     # If there is no fs-post-data action in the init.<device>.rc file, you
     # must uncomment this line, otherwise encrypted filesystems
@@ -398,8 +402,6 @@ on boot
     chown system system /sys/class/leds/lcd-backlight/brightness
     chown system system /sys/class/leds/torch-light/brightness
     chown system system /sys/class/leds/button-backlight/brightness
-    chown system system /sys/class/leds/singal-light/brightness
-    chown system system /sys/class/leds/singal-light/blink
     chown system system /sys/class/leds/jogball-backlight/brightness
     chown system system /sys/class/leds/red/brightness
     chown system system /sys/class/leds/green/brightness
@@ -415,20 +417,7 @@ on boot
     chown system system /sys/kernel/ipv4/tcp_rmem_min
     chown system system /sys/kernel/ipv4/tcp_rmem_def
     chown system system /sys/kernel/ipv4/tcp_rmem_max
-    chown system system /dev/hotknot
-    chmod 0660 /dev/hotknot
-    chown system system /sys/gtp_test/rawdata
-    chmod 0660 /sys/gtp_test/rawdata
-    chown system system /sys/class/TP-UNLOCK/device/gesture
-    chmod 0660 /sys/class/TP-UNLOCK/device/gesture
-
     chown root radio /proc/cmdline
-
-    chmod 0660 /sys/class/input/input4/offset
-    chown input system /sys/class/input/input4/offset
-    chown system input /dev/input/event4
-
-    chown system system /persist/compass_lib.cfg
 
     # Define default initial receive window size in segments.
     setprop net.tcp.default_init_rwnd 60
@@ -449,8 +438,8 @@ on property:vold.decrypt=trigger_encryption
 on property:sys.init_log_level=*
     loglevel ${sys.init_log_level}
 
-#on charger
-#class_start charger
+on charger
+    class_start charger
 
 on property:vold.decrypt=trigger_reset_main
     class_reset main
@@ -513,6 +502,10 @@ service console /system/bin/sh
     group shell log
     seclabel u:r:shell:s0
 
+service auditd /system/bin/auditd -k
+    seclabel u:r:logd:s0
+    class main
+
 on property:ro.debuggable=1
     start console
 
@@ -566,7 +559,7 @@ service ril-daemon /system/bin/rild
     socket rild stream 660 root radio
     socket rild-debug stream 660 radio system
     user root
-    group radio cache inet misc audio log qcom_diag
+    group radio cache inet misc audio sdcard_rw qcom_diag log
 
 service surfaceflinger /system/bin/surfaceflinger
     class core
@@ -601,7 +594,7 @@ service encrypt /system/bin/vdc --wait cryptfs enablecrypto inplace default
 
 service bootanim /system/bin/bootanimation
     class core
-    user media
+    user graphics
     group graphics audio
     disabled
     oneshot
@@ -614,6 +607,11 @@ service flash_recovery /system/bin/install-recovery.sh
     class main
     seclabel u:r:install_recovery:s0
     oneshot
+    disabled
+
+# update recovery if enabled
+on property:persist.sys.recovery_update=true
+    start flash_recovery
 
 service racoon /system/bin/racoon
     class main
@@ -654,18 +652,3 @@ service pre-recovery /system/bin/uncrypt
     class main
     disabled
     oneshot
-#ljw
-on property:service.adb.root=1
-    write /sys/class/android_usb/android0/enable 0
-    restart adbd
-    write /sys/class/android_usb/android0/enable 1
-
-service mpu6050_gyro_cal /system/bin/mpu6050_gyro_cal load
-	class main
-	oneshot
-	seclabel u:r:mpu6050_gyro_cal:s0
-
-service compass_lib_cfg /system/bin/compass_lib_cfg
-	class main
-	oneshot
-	seclabel u:r:compass_lib_cfg:s0
