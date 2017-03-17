@@ -207,7 +207,8 @@ PRODUCT_COPY_FILES += \
     device/tcl/q39/config/wfdconfigsink.xml:system/etc/wfdconfigsink.xml \
     device/tcl/q39/config/wfdconfig.xml:system/etc/wfdconfig.xml \
     device/tcl/q39/config/xtra_root_cert.pem:system/etc/xtra_root_cert.pem \
-    device/tcl/q39/config/xtwifi.conf:system/etc/xtwifi.conf
+    device/tcl/q39/config/xtwifi.conf:system/etc/xtwifi.conf \
+    device/tcl/q39/config/apns-conf.xml:system/etc/apns-conf.xml
 
 # surround sound
 PRODUCT_COPY_FILES += \
