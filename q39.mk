@@ -1,8 +1,15 @@
 DEVICE_PACKAGE_OVERLAYS := device/tcl/q39/overlay
+QC_PROP_ROOT := vendor/qcom/msm8916_64
 
 TARGET_USES_QCOM_BSP := true
 # Add QC Video Enhancements flag
 TARGET_ENABLE_QC_AV_ENHANCEMENTS := true
+
+ifeq ($(strip $(TARGET_BOARD_SUFFIX)),)
+    PREBUILT_BOARD_PLATFORM_DIR := $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX)
+else
+    PREBUILT_BOARD_PLATFORM_DIR := $(TARGET_BOARD_PLATFORM)
+endif
 
 #QTIC flag
 -include $(QCPATH)/common/config/qtic-config.mk
@@ -349,3 +356,5 @@ PRODUCT_COPY_FILES += \
     device/tcl/q39/sensors/hals.conf:system/etc/sensors/hals.conf
 
 GMS_ENABLE_OPTIONAL_MODULES := false
+
+$(call inherit-product-if-exists, $(QC_PROP_ROOT)/prebuilt_HY22/target/product/$(PREBUILT_BOARD_PLATFORM_DIR)/prebuilt.mk)
