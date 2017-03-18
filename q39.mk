@@ -23,20 +23,7 @@ TARGET_USES_MEDIA_EXTENSIONS := true
 
 # qcom shell
 PRODUCT_PACKAGES += \
-    init.qcom.power.sh \
-    init.qcom.debug.sh \
-    init.ath3k.bt.sh \
-    init.crda.sh \
-    init.qcom.audio.sh \
-    init.qcom.bt.sh \
-    init.qcom.coex.sh \
-    init.qcom.efs.sync.sh \
-    init.qcom.fm.sh \
-    init.qcom.post_boot.sh \
-    init.qcom.sdio.sh \
-    init.qcom.uicc.sh \
-    init.qcom.wifi.sh \
-    init.qcom.zram.sh
+    init.qcom.power.sh
 
 # root
 PRODUCT_PACKAGES += \
