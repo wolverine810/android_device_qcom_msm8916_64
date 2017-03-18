@@ -357,6 +357,9 @@ PRODUCT_COPY_FILES += \
 
 GMS_ENABLE_OPTIONAL_MODULES := false
 
+# Get non-open-source specific aspects
+$(call inherit-product-if-exists, vendor/tcl/q39/q39-vendor.mk)
+
 $(call inherit-product-if-exists, $(QC_PROP_ROOT)/prebuilt_HY22/Android.mk)
 
 $(call inherit-product-if-exists, $(QC_PROP_ROOT)/prebuilt_HY22/target/product/$(PREBUILT_BOARD_PLATFORM_DIR)/prebuilt.mk)
