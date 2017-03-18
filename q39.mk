@@ -293,10 +293,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     logwrapper
 
-# ip
-PRODUCT_PACKAGES += \
-    ip
-
 # mdnsd
 PRODUCT_PACKAGES += \
     mdnsd
