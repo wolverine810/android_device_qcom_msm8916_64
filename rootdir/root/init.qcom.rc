@@ -960,10 +960,3 @@ service msm_irqbalance /system/bin/msm_irqbalance -f /system/vendor/etc/msm_irqb
     user root
     group root
     disabled
-
-#add batteryd service
-service batteryd /system/xbin/batteryd
-    class core
-    group system inet
-    user root
-    seclabel u:r:batteryd:s0
