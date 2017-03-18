@@ -795,7 +795,7 @@ vendor/lib/libchromatix_imx219_8916_preview.so
 vendor/lib/libchromatix_imx219_8916_snapshot.so
 vendor/lib/libchromatix_imx219_8916_video_hd.so
 vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_common.so       
-vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_default_video.soeo.so
+vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_default_video.so
 vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_hfr_120fps.so   
 vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_hfr_60fps.so    
 vendor/lib/libchromatix_s5k3m2_f13s01k_coasia_hfr_90fps.so    
