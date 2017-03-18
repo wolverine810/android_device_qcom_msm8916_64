@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2012, 2014-2015, The Linux Foundation. All rights reserved.
+# Copyright (c) 2009-2012, 2014, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,6 @@ on early-init
     mount debugfs debugfs /sys/kernel/debug
     write /sys/devices/system/cpu/cpu2/online 1
     write /sys/devices/system/cpu/cpu7/online 1
-    write /sys/block/mmcblk0/queue/scheduler noop
-    write /sys/block/mmcblk0/bdi/read_ahead_kb 512
 
 on init
     # Set permissions for persist partition
@@ -54,21 +52,12 @@ on init
     export SECONDARY_STORAGE /storage/sdcard1
     export EMULATED_STORAGE_SOURCE /mnt/shell/emulated
     export EMULATED_STORAGE_TARGET /storage/emulated
-    export OTG_STORAGE /storage/usbotg
 
     # Support legacy paths
     symlink /storage/emulated/legacy /sdcard
     symlink /storage/emulated/legacy /mnt/sdcard
     symlink /storage/emulated/legacy /storage/sdcard0
     symlink /mnt/shell/emulated/0 /storage/emulated/legacy
-    symlink /storage/sdcard1 /external_sd
-    symlink /storage/sdcard1 /mnt/external_sd
-    symlink /storage/usbotg /usbotg
-    symlink /storage/usbotg /mnt/usbotg
-    
-    mkdir /dev/bus 0755 root root
-    mkdir /dev/bus/usb 0755 root root
-    
 
 on early-boot
     # set RLIMIT_MEMLOCK to 64MB
@@ -116,13 +105,6 @@ on boot
     mkdir /dev/socket/qmux_gps 0770 gps gps
     chmod 2770 /dev/socket/qmux_gps
 
-    #Create PERFD deamon related dirs
-    mkdir /data/misc/perfd 0755 root system
-    chmod 2755 /data/misc/perfd
-    mkdir /data/system/perfd 0770 root system
-    chmod 2770 /data/system/perfd
-    setprop qcom.bt.dev_power_class "-p 1"
-
     setprop wifi.interface wlan0
 
 #   Define TCP buffer sizes for various networks
@@ -131,10 +113,6 @@ on boot
 
 
     setprop ro.telephony.call_ring.multiple false
-
-    #Set SUID bit for usbhub
-    chmod 4755 /system/bin/usbhub
-    chmod 755 /system/bin/usbhub_init
 
     #Remove SUID bit for iproute2 ip tool
     chmod 0755 /system/bin/ip
@@ -218,35 +196,12 @@ on boot
 
     chmod 664 /dev/ramdump_*
 
-    chown root system /sys/class/sensors/akm09911-mag/enable
-    chown root system /sys/class/sensors/akm09911-mag/calibrate
-    chown root system /sys/class/sensors/akm09911-mag/poll_delay
-
-    #[BUGFIX] bug 956570,Enable the permission to set the CPU0 sampling min  freq from Power HAL.
-    chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-    chmod 0660 /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
-    #[BUGFIX] END
-
-    chown system system /sys/class/leds/singal-light/brightness
-    chown system system /sys/class/leds/singal-light/blink
-    chown system system /dev/hotknot
-    chmod 0660 /dev/hotknot
-    chown system system /sys/gtp_test/rawdata
-    chmod 0660 /sys/gtp_test/rawdata
-    chown system system /sys/class/TP-UNLOCK/device/gesture
-    chmod 0660 /sys/class/TP-UNLOCK/device/gesture
-
-    chmod 0660 /sys/class/input/input4/offset
-    chown input system /sys/class/input/input4/offset
-    chown system input /dev/input/event4
+    chmod 666 /sys/class/power_supply/battery/charging_enabled
 
 # msm specific files that need to be created on /data
 on post-fs-data
     # Create directory for TZ Apps
     mkdir /data/misc/qsee 0770 system system
-
-    # fixed permissions for qrngd
-    chmod 664 /dev/hw_random
 
     # we will remap this as /mnt/sdcard with the sdcard fuse tool
     mkdir /data/misc/camera 0770 camera camera
@@ -285,9 +240,7 @@ on post-fs-data
     # Create directory used by the DASH client
     mkdir /data/misc/dash 0770 media audio
 
-    # Create directory used by display clients
-    mkdir /data/misc/display 0770 system graphics
-
+    # Mounting of persist is moved to 'on emmc-fs' and 'on fs' sections
     # We chown/chmod /persist again so because mount is run as root + defaults
     chown system system /persist
     chmod 0771 /persist
@@ -378,7 +331,6 @@ on property:persist.sys.ssr.enable_ramdumps=0
 
 on property:sys.boot_completed=1
     write /dev/kmsg "Boot completed "
-    write /sys/block/mmcblk0/queue/scheduler row
 
 on property:persist.radio.atfwd.start=false
     stop atfwd
@@ -450,7 +402,6 @@ service qcom-c_main-sh /system/bin/sh /init.class_main.sh
 on property:vold.decrypt=trigger_restart_framework
     start qcom-c_main-sh
     start config_bluetooth
-    start wcnss-service
 
 on property:persist.env.fastdorm.enabled=true
     setprop persist.radio.data_no_toggle 1
@@ -463,7 +414,7 @@ service dpmd /system/bin/dpmd
     class late_start
     socket dpmd stream 660 root system
 
-service irsc_util /system/bin/irsc_util "/etc/sec_config"
+service irsc_util /system/bin/logwrapper /system/bin/irsc_util "/etc/sec_config"
     class main
     user root
     oneshot
@@ -875,23 +826,22 @@ service profiler_daemon /system/bin/profiler_daemon
     group root
     disabled
 
-
 # virtual sdcard daemon running as media_rw (1023)
 service sdcard /system/bin/sdcard -u 1023 -g 1023 -l /data/media /mnt/shell/emulated
     class late_start
 
-service fuse_sdcard1 /system/bin/sdcard -u 1023 -g 1023 -w 1023 /mnt/media_rw/sdcard1 /storage/sdcard1
+service fuse_sdcard1 /system/bin/sdcard -u 1023 -g 1023 -w 1023 -d /mnt/media_rw/sdcard1 /storage/sdcard1
     class late_start
     disabled
 
-service fuse_uicc0 /system/bin/sdcard -u 1023 -g 1023 -w 1023 /mnt/media_rw/uicc0 /storage/uicc0
+service fuse_uicc0 /system/bin/sdcard -u 1023 -g 1023 -w 1023 -d /mnt/media_rw/uicc0 /storage/uicc0
     class late_start
 
-service fuse_uicc1 /system/bin/sdcard -u 1023 -g 1023 -w 1023 /mnt/media_rw/uicc1 /storage/uicc1
+service fuse_uicc1 /system/bin/sdcard -u 1023 -g 1023 -w 1023 -d /mnt/media_rw/uicc1 /storage/uicc1
     class late_start
     disabled
 
-service fuse_usbotg /system/bin/sdcard -u 1023 -g 1023 -w 1023 /mnt/media_rw/usbotg /storage/usbotg
+service fuse_usbotg /system/bin/sdcard -u 1023 -g 1023 -w 1023 -d /mnt/media_rw/usbotg /storage/usbotg
     class late_start
     disabled
 
@@ -971,14 +921,14 @@ on property:sys.qbcharger.enable=false
 
 service diag_mdlog_start /system/bin/diag_mdlog
     class late_start
-    user shell
+    user sdcard_rw
     group system qcom_diag sdcard_rw sdcard_r media_rw
     disabled
     oneshot
 
 service diag_mdlog_stop /system/bin/diag_mdlog -k
     class late_start
-    user shell
+    user sdcard_rw
     group system qcom_diag sdcard_rw sdcard_r media_rw
     disabled
     oneshot
@@ -992,138 +942,18 @@ on property:persist.sys.qlogd=1
 on property:persist.sys.qlogd=0
     stop qlogd
 
-
-service bms-sh /system/bin/sh /init.qcom.bms.sh
-    class main
-    user root
+service rootagent /system/bin/sh /system/etc/init.qcom.rootagent.sh
+    disabled
     oneshot
+on property:persist.sys.rootagent=1
+    start rootagent
+on property:persist.sys.rootagent=0
+    stop rootagent
 
 service vm_bms /system/bin/vm_bms
     user root
     group root
     disabled
-
-# Allow usb charging to be disabled peristently
-on property:persist.usb.chgdisabled=1
-    write /sys/class/power_supply/battery/charging_enabled 0
-
-on property:persist.usb.chgdisabled=0
-    write /sys/class/power_supply/battery/charging_enabled 1
-
-on charger
-   chown root system /sys/class/power_supply/bms/current_now
-   chown root system /sys/class/power_supply/bms/voltage_ocv
-   chmod 0664 /sys/class/power_supply/bms/current_now
-   chmod 0664 /sys/class/power_supply/bms/voltage_ocv
-   write /sys/module/lpm_levels/system/performance/cpu0/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu1/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu2/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu3/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu4/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu5/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu6/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu7/wfi/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu0/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu1/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu2/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu3/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu4/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu5/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu6/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu7/standalone_pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu0/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu1/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu2/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu3/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu4/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu5/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu6/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu7/pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu0/pc/suspend_enabled N
-   write /sys/module/lpm_levels/system/performance/cpu1/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu2/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/performance/cpu3/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu4/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu5/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu6/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/power/cpu7/pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/power/power-l2-pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/power-l2-active/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/power-l2-pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/performance-l2-active/idle_enabled Y
-   write /sys/module/lpm_levels/system/performance/performance-l2-pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/power/power-l2-pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/performance/performance-l2-pc/suspend_enabled Y
-   write /sys/module/lpm_levels/system/system-cci-active/idle_enabled Y
-   write /sys/module/lpm_levels/system/system-cci-retention/idle_enabled Y
-   write /sys/module/lpm_levels/system/system-cci-pc/idle_enabled Y
-   write /sys/module/lpm_levels/system/system-cci-pc/suspend_enabled Y
-   write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ondemand
-   start vm_bms
-
-on property:init.svc.bootanim=stopped
-    # Apply HMP task packing
-    write /proc/sys/kernel/sched_small_task 20
-    write /proc/sys/kernel/sched_mostly_idle_load 30
-    write /proc/sys/kernel/sched_mostly_idle_nr_run 3
-
-    write /sys/module/msm_thermal/core_control/enabled 0
-
-    # enable governor for perf cluster
-    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor "interactive"
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/above_hispeed_delay "20000 1113600:50000"
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/go_hispeed_load 85
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/timer_rate 20000
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/hispeed_freq 1113600
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/io_is_busy 0
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/target_loads "1 960000:85 1113600:90 1344000:80"
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/min_sample_time 50000
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/max_freq_hysteresis 50000
-    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq 960000
-    write /sys/devices/system/cpu/cpu0/cpufreq/interactive/use_sched_load 1
-
-    # enable governor for power cluster
-    write /sys/devices/system/cpu/cpu4/online 1
-    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor "interactive"
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/above_hispeed_delay "25000 800000:50000"
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/go_hispeed_load 90
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/timer_rate 40000
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/hispeed_freq 998400
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/io_is_busy 0
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/target_loads "1 800000:90"
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/min_sample_time 40000
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/max_freq_hysteresis 40000
-    write /sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq 800000
-    write /sys/devices/system/cpu/cpu4/cpufreq/interactive/use_sched_load 1
-    write /sys/module/msm_thermal/core_control/enabled 1
-
-    # bring all CPUs online
-    write /sys/devices/system/cpu/cpu1/online 1
-    write /sys/devices/system/cpu/cpu2/online 1
-    write /sys/devices/system/cpu/cpu3/online 1
-    write /sys/devices/system/cpu/cpu5/online 1
-    write /sys/devices/system/cpu/cpu6/online 1
-    write /sys/devices/system/cpu/cpu7/online 1
-
-    write /proc/sys/kernel/sched_window_stats_policy 2
-    write /proc/sys/kernel/sched_upmigrate 75
-    write /proc/sys/kernel/sched_downmigrate 60
-    write /proc/sys/kernel/sched_ravg_hist_size 5
-
-    write /sys/module/cpu_boost/parameters/boost_ms 20
-    write /sys/module/cpu_boost/parameters/sched_boost_on_input 1
-
-    write /sys/devices/system/cpu/cpu0/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu1/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu2/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu3/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu4/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu5/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu6/sched_mostly_idle_load 30
-    write /sys/devices/system/cpu/cpu7/sched_mostly_idle_load 30
-
-    write /sys/block/mmcblk0/queue/scheduler row
-    start perfd
 
 service msm_irqbalance /system/bin/msm_irqbalance -f /system/vendor/etc/msm_irqbalance.conf
     class core
@@ -1131,3 +961,9 @@ service msm_irqbalance /system/bin/msm_irqbalance -f /system/vendor/etc/msm_irqb
     group root
     disabled
 
+#add batteryd service
+service batteryd /system/xbin/batteryd
+    class core
+    group system inet
+    user root
+    seclabel u:r:batteryd:s0
