@@ -71,7 +71,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
            dalvik.vm.heapgrowthlimit=128m
 $(call inherit-product, device/qcom/common/common64.mk)
 
-PRODUCT_NAME := TCL_M3G
+PRODUCT_NAME := q39
 PRODUCT_DEVICE := q39
 PRODUCT_BRAND := TCL
 PRODUCT_MODEL := TCL_M3G
