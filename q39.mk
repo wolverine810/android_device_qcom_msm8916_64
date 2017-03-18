@@ -357,4 +357,6 @@ PRODUCT_COPY_FILES += \
 
 GMS_ENABLE_OPTIONAL_MODULES := false
 
+$(call inherit-product-if-exists, $(QC_PROP_ROOT)/prebuilt_HY22/Android.mk)
+
 $(call inherit-product-if-exists, $(QC_PROP_ROOT)/prebuilt_HY22/target/product/$(PREBUILT_BOARD_PLATFORM_DIR)/prebuilt.mk)
